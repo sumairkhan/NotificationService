@@ -61,3 +61,38 @@ class Program
         }
     }
 }
+
+```csharp .NET CORE
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddScoped<INotificationService, EmailNotificationService>();
+    services.AddScoped<INotificationService, PushNotificationService>();
+    services.AddScoped<INotificationService, SmsNotificationService>();
+
+    // Decorator for combining multiple services
+    services.AddScoped<INotificationService>(provider =>
+    {
+        var emailService = provider.GetService<EmailNotificationService>();
+        var pushService = provider.GetService<PushNotificationService>();
+        var smsService = provider.GetService<SmsNotificationService>();
+        return new NotificationDecorator(emailService, pushService, smsService);
+    });
+}
+
+public class NotificationController : ControllerBase
+{
+    private readonly INotificationService _notificationService;
+
+    public NotificationController(INotificationService notificationService)
+    {
+        _notificationService = notificationService;
+    }
+
+    [HttpPost("send-notification")]
+    public async Task<IActionResult> SendNotification(string recipient, string message)
+    {
+        var notifications = await _notificationService.SendAsync(recipient, message);
+        return Ok(notifications);
+    }
+}
+
